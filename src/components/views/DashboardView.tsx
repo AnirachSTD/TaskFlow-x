@@ -9,9 +9,34 @@ import { useApp } from '../../context/AppContext';
 import { Task, Project } from '../../types';
 import { 
   CheckCircle, Clock, AlertCircle, Play, Archive, Sparkles, Folder, 
-  Plus, ChevronRight, Calendar, AlertTriangle, ArrowUpRight
+  Plus, ChevronRight, Calendar, AlertTriangle, ArrowUpRight, PieChart as PieIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+
+// Custom tooltip for Priority Distribution Pie Chart
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-lg shadow-md text-xs space-y-1">
+        <p className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
+          {data.name} Priority
+        </p>
+        <p className="text-slate-500 dark:text-slate-400 font-medium flex justify-between gap-4">
+          <span>Tasks:</span> 
+          <span className="font-bold text-slate-800 dark:text-slate-100">{data.value}</span>
+        </p>
+        <p className="text-slate-500 dark:text-slate-400 font-medium flex justify-between gap-4">
+          <span>Share:</span> 
+          <span className="font-bold text-slate-800 dark:text-slate-100">{data.percent}%</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const DashboardView: React.FC = () => {
   const { 
@@ -83,6 +108,30 @@ export const DashboardView: React.FC = () => {
     const completedTasks = projTasks.filter((t) => t.status === 'done');
     return Math.round((completedTasks.length / projTasks.length) * 100);
   };
+
+  // Priority Distribution analytics across all tasks of all projects
+  const priorityData = useMemo(() => {
+    const counts = { low: 0, medium: 0, high: 0, urgent: 0 };
+    tasks.forEach((t) => {
+      const prio = t.priority;
+      if (prio in counts) {
+        counts[prio as keyof typeof counts]++;
+      }
+    });
+
+    const total = counts.low + counts.medium + counts.high + counts.urgent;
+
+    return [
+      { name: 'Low', value: counts.low, percent: total > 0 ? Math.round((counts.low / total) * 100) : 0, color: '#10B981' },
+      { name: 'Medium', value: counts.medium, percent: total > 0 ? Math.round((counts.medium / total) * 100) : 0, color: '#3B82F6' },
+      { name: 'High', value: counts.high, percent: total > 0 ? Math.round((counts.high / total) * 100) : 0, color: '#F59E0B' },
+      { name: 'Urgent', value: counts.urgent, percent: total > 0 ? Math.round((counts.urgent / total) * 100) : 0, color: '#EF4444' },
+    ].filter(item => item.value > 0);
+  }, [tasks]);
+
+  const totalPriorityTasks = useMemo(() => {
+    return priorityData.reduce((acc, item) => acc + item.value, 0);
+  }, [priorityData]);
 
   const getPriorityBadgeColor = (prio: string) => {
     switch (prio) {
@@ -199,7 +248,91 @@ export const DashboardView: React.FC = () => {
 
       </div>
 
-      {/* 4. Split Layout Center: My Tasks & Projects Grid */}
+    {/* 3.5. Priority Distribution Pie Chart view */}
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 transition-all">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-slate-850">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-955/20 flex items-center justify-center text-[#F59E0B]">
+            <PieIcon className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Priority Distribution</h3>
+            <p className="text-[10px] text-[#64748B] dark:text-slate-400 font-medium tracking-normal mt-0.5">
+              Workload allocation spread of High, Medium, Low, and Urgent priorities globally
+            </p>
+          </div>
+        </div>
+        
+        <div className="text-right">
+          <span className="text-[10px] font-bold text-[#64748B] dark:text-slate-500 block">Total Active Scope</span>
+          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100 font-mono mt-0.5 inline-block">{totalPriorityTasks} Tasks</span>
+        </div>
+      </div>
+
+      {priorityData.length === 0 ? (
+        <div className="py-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl opacity-70">
+          <PieIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+          <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">No priority metrics computed</h4>
+          <p className="text-[10px] text-slate-400 max-w-xs mx-auto mt-1 leading-normal">
+            Register active tasks in your synchronized projects to process live priority distribution.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          {/* Pie Chart container */}
+          <div className="md:col-span-5 h-[180px] sm:h-[200px] flex items-center justify-center relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={priorityData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={70}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {priorityData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Central stat block inside donut */}
+            <div className="absolute inset-0 m-auto h-fit w-fit text-center pointer-events-none">
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Global</span>
+              <span className="text-xl font-black text-slate-800 dark:text-slate-100 font-mono leading-none">{totalPriorityTasks}</span>
+            </div>
+          </div>
+
+          {/* List Distribution counts */}
+          <div className="md:col-span-7 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {priorityData.map((entry) => (
+              <div 
+                key={entry.name}
+                className="bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border border-slate-150/50 dark:border-slate-850/60"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{entry.name}</span>
+                </div>
+                <div className="mt-2.5 flex items-baseline justify-between">
+                  <span className="text-base font-extrabold text-slate-850 dark:text-slate-100 font-mono">{entry.value}</span>
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{entry.percent}%</span>
+                </div>
+                {/* Indicator bar */}
+                <div className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5">
+                  <div className="h-full rounded-full" style={{ width: `${entry.percent}%`, backgroundColor: entry.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* 4. Split Layout Center: My Tasks & Projects Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         
         {/* LEFT COLUMN: Assigned To Me Panel (3 cols) */}
