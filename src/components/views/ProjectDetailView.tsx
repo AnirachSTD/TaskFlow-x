@@ -75,6 +75,7 @@ export const ProjectDetailView: React.FC = () => {
   const [textSearch, setTextSearch] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
+  const [selectedDueDate, setSelectedDueDate] = useState('');
 
   // Table sorting configurations
   const [sortField, setSortField] = useState<keyof Task | 'commentCount'>('dueDate');
@@ -238,9 +239,16 @@ export const ProjectDetailView: React.FC = () => {
       // Priority match
       if (selectedPriority && t.priority !== selectedPriority) return false;
 
+      // Due Date match
+      if (selectedDueDate) {
+        if (!t.dueDate) return false;
+        const taskDate = t.dueDate.split('T')[0];
+        if (taskDate !== selectedDueDate) return false;
+      }
+
       return true;
     });
-  }, [tasks, project.id, textSearch, selectedAssignee, selectedPriority]);
+  }, [tasks, project.id, textSearch, selectedAssignee, selectedPriority, selectedDueDate]);
 
   // Table Sorted Tasks list
   const sortedTasks = useMemo(() => {
@@ -268,6 +276,7 @@ export const ProjectDetailView: React.FC = () => {
     setTextSearch('');
     setSelectedAssignee('');
     setSelectedPriority('');
+    setSelectedDueDate('');
     showToast('Filters cleared.', 'info');
   };
 
@@ -606,17 +615,41 @@ export const ProjectDetailView: React.FC = () => {
       {/* 2. DYNAMIC SEARCH & CHIP FILTER RAIL */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 shadow-xs">
         
-        {/* Search Input bar */}
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute inset-y-0 left-3 m-auto h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          <input
-            id="project-query-search"
-            type="search"
-            value={textSearch}
-            onChange={(e) => setTextSearch(e.target.value)}
-            placeholder="Search this project..."
-            className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-[#64748B] dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-1 focus:ring-[#2563EB] font-medium text-xs transition-all"
-          />
+        {/* Search Input bar & Due Date picker next to search */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:max-w-md">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute inset-y-0 left-3 m-auto h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <input
+              id="project-query-search"
+              type="search"
+              value={textSearch}
+              onChange={(e) => setTextSearch(e.target.value)}
+              placeholder="Search this project..."
+              className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-[#64748B] dark:placeholder:text-slate-500 focus:outline-hidden focus:ring-1 focus:ring-[#2563EB] font-medium text-xs transition-all"
+            />
+          </div>
+          
+          <div className="relative flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 gap-2 shrink-0">
+            <Calendar className="h-3.5 w-3.5 text-slate-400" />
+            <input
+              id="filter-duedate-picker"
+              type="date"
+              value={selectedDueDate}
+              onChange={(e) => setSelectedDueDate(e.target.value)}
+              className="bg-transparent text-slate-705 dark:text-slate-300 focus:outline-hidden font-medium text-xs cursor-pointer select-none"
+              title="Filter by due date"
+            />
+            {selectedDueDate && (
+              <button
+                id="clear-duedate-filter-btn"
+                onClick={() => setSelectedDueDate('')}
+                className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+                title="Clear date filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Dropdowns logic */}
@@ -655,7 +688,7 @@ export const ProjectDetailView: React.FC = () => {
           </select>
 
           {/* Clear Filters helper */}
-          {(textSearch || selectedAssignee || selectedPriority) && (
+          {(textSearch || selectedAssignee || selectedPriority || selectedDueDate) && (
             <button
               id="clear-active-filters-btn"
               onClick={handleClearFilters}
