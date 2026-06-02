@@ -1,0 +1,6 @@
+{
+  "name": "TaskFlow",
+  "description": "TaskFlow is a team task management app that lets teams create projects, assign and prioritize tasks, and track progress through kanban and list views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
